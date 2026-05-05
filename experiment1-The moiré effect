@@ -1,0 +1,118 @@
+// Experiment 1 — Moiré Interference
+// Inspired by Nervous System studio (n-e-r-v-o-u-s.com) and the in-class line grid demo (week 3)
+// I started with the basic idea of drawing repeated lines, then figured out that
+// if you run two slightly different versions at once, you get this interference effect.
+// The noise() alpha was something I added to stop it looking too uniform and robotic.
+
+let mode = 0;
+let t = 0;
+
+function setup() {
+  createCanvas(400, 400);
+  strokeWeight(0.8);
+  noFill();
+}
+
+function draw() {
+  background(10, 10, 18);
+  t += 0.004;
+
+  // normalise mouse to -1 to 1 so it's easier to use as an offset
+  let mx = (mouseX / width - 0.5) * 2;
+  let my = (mouseY / height - 0.5) * 2;
+
+  if (mode === 0) drawRadial(mx, my);
+  else if (mode === 1) drawLinear(mx, my);
+  else drawSpiral(mx, my);
+}
+
+// Two sets of radial lines from drifting centres.
+// Moving the mouse pushes them in opposite directions which
+// stretches or collapses the interference zone in the middle.
+function drawRadial(mx, my) {
+  let cx1 = width / 2 + mx * 80 + sin(t * 0.7) * 60;
+  let cy1 = height / 2 + my * 60 + cos(t * 0.5) * 40;
+  let cx2 = width / 2 - mx * 80 + cos(t * 0.9) * 70;
+  let cy2 = height / 2 - my * 60 + sin(t * 0.6) * 50;
+
+  for (let i = 0; i < 120; i++) {
+    let angle = (TWO_PI / 120) * i;
+    let len = max(width, height) * 0.8;
+
+    // noise-driven alpha so lines aren't all the same brightness
+    stroke(255, 255, 255, map(noise(i * 0.1, t * 0.3), 0, 1, 0.15, 0.9) * 180);
+    line(cx1, cy1, cx1 + cos(angle) * len, cy1 + sin(angle) * len);
+
+    // second system rotates slightly differently — this is what creates the fringe
+    let a2 = angle + t * 0.12 + mx * 0.3;
+    stroke(200, 220, 255, map(noise(i * 0.1 + 100, t * 0.3 + 10), 0, 1, 0.15, 0.9) * 150);
+    line(cx2, cy2, cx2 + cos(a2) * len, cy2 + sin(a2) * len);
+  }
+}
+
+// Horizontal and vertical sine-wave lines layered on top of each other.
+// Using slightly different frequencies for each direction means they
+// never line up perfectly — gives that shimmering woven cloth look.
+function drawLinear(mx, my) {
+  let spacing = 14;
+
+  for (let i = 0; i < floor(height / spacing) + 2; i++) {
+    let y = i * spacing;
+    stroke(255, 255, 255, map(sin(i * 0.3 + t * 1.2 + mx * 2), -1, 1, 40, 220));
+    beginShape();
+    for (let x = 0; x <= width; x += 4) {
+      vertex(x, y + sin(x * 0.015 + t * 1.5 + my * 2) * 18);
+    }
+    endShape();
+  }
+
+  for (let i = 0; i < floor(width / spacing) + 2; i++) {
+    let x = i * spacing;
+    stroke(180, 200, 255, map(cos(i * 0.3 + t * 0.9 + my * 2), -1, 1, 30, 180));
+    beginShape();
+    for (let y = 0; y <= height; y += 4) {
+      vertex(x + cos(y * 0.015 + t * 1.1 + mx * 2) * 18, y);
+    }
+    endShape();
+  }
+}
+
+// Two sets of spirals spinning in opposite directions.
+// The mouse squishes the Y axis of the second one which warps the whole vortex.
+// I tried 3 and 7 arms too — 5 felt the most balanced visually.
+function drawSpiral(mx, my) {
+  let cx = width / 2 + mx * 50;
+  let cy = height / 2 + my * 50;
+  let maxR = max(width, height) * 0.6;
+
+  for (let a = 0; a < 5; a++) {
+    let offset = (TWO_PI / 5) * a;
+
+    beginShape();
+    for (let i = 0; i < 300; i++) {
+      let r = (i / 300) * maxR;
+      stroke(255, 255, 255, map(i, 0, 300, 220, 20));
+      vertex(cx + cos((i / 300) * TWO_PI * 5 + offset + t * 0.4) * r, cy + sin((i / 300) * TWO_PI * 5 + offset + t * 0.4) * r);
+    }
+    endShape();
+
+    beginShape();
+    for (let i = 0; i < 300; i++) {
+      let r = (i / 300) * maxR;
+      let angle = -(i / 300) * TWO_PI * 5 + offset - t * 0.5 + mx * 0.8;
+      stroke(160, 200, 255, map(i, 0, 300, 180, 10));
+      vertex(cx + cos(angle) * r, cy + sin(angle) * r * (1 + my * 0.3));
+    }
+    endShape();
+  }
+}
+
+function keyPressed() {
+  if (key === "1") mode = 0;
+  if (key === "2") mode = 1;
+  if (key === "3") mode = 2;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
