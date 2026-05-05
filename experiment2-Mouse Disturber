@@ -1,16 +1,53 @@
 // Experiment 2 — Mouse Disturber
-// Inspired by Daniel Shiffman's Nature of Code (Ch.2 Forces) and the in-class particle demo (week 5)
-// Also took the flock mode idea loosely from Craig Reynolds' Boids rules (red3d.com/cwr/boids)
-// I built on the basic particle loop from class and wrote three completely different
-// force behaviours from scratch — the hardest part was tuning orbit so particles don't fly off screen.
+//
+// Starting point: Daniel Shiffman's "Seek" steering behaviour example
+// from The Nature of Code chapter 6:
+// https://natureofcode.com/autonomous-agents/#example-61-a-vehicle-that-seeks-a-target
+// That example shows a single particle steering toward a mouse target.
+// I took that structure as the base and built three different
+// force behaviours on top of it with a full particle grid.
+//
+// Also referenced Craig Reynolds' original Boids paper (1987) for the
+// alignment concept used in flock mode.
+//
+// The three force models, HSB colour system, trail effect, grid layout,
+// and mode switching are all my own development.
 
 let particles = [];
 let mode = 0;
+let btn1, btn2, btn3;
 
 function setup() {
-  createCanvas(400, 400);
+  createCanvas(windowWidth, windowHeight);
   colorMode(HSB, 360, 100, 100, 100);
   spawnParticles();
+
+  btn1 = createButton('Variation 1 — Repel');
+  btn2 = createButton('Variation 2 — Orbit');
+  btn3 = createButton('Variation 3 — Flock');
+
+  styleBtn(btn1);
+  styleBtn(btn2);
+  styleBtn(btn3);
+
+  btn1.position(20, 20);
+  btn2.position(20, 55);
+  btn3.position(20, 90);
+
+  btn1.mousePressed(() => { mode = 0; spawnParticles(); });
+  btn2.mousePressed(() => { mode = 1; spawnParticles(); });
+  btn3.mousePressed(() => { mode = 2; spawnParticles(); });
+}
+
+function styleBtn(btn) {
+  btn.style('background', 'rgba(255,255,255,0.08)');
+  btn.style('color', 'rgba(255,255,255,0.75)');
+  btn.style('border', '1px solid rgba(255,255,255,0.2)');
+  btn.style('padding', '6px 14px');
+  btn.style('font-family', 'monospace');
+  btn.style('font-size', '12px');
+  btn.style('cursor', 'pointer');
+  btn.style('border-radius', '3px');
 }
 
 function spawnParticles() {
@@ -21,7 +58,6 @@ function spawnParticles() {
 }
 
 function draw() {
-  // low alpha on background each frame = motion trails, didn't plan this but loved the effect
   background(240, 20, 8, 18);
   for (let p of particles) {
     p.update(mouseX, mouseY);
@@ -56,8 +92,9 @@ class Particle {
     else this.flock(dx, dy, d, inRange);
   }
 
-  // Squared falloff means close particles burst outward hard, far ones barely move.
-  // Spring constant 0.04 gets them home in about 1.5 seconds without oscillating too much.
+  // Variation 1 — Repel
+  // Squared falloff: close particles burst hard, far ones barely move.
+  // Spring constant 0.04 returns them home in ~1.5 seconds without oscillating.
   repel(dx, dy, d, inRange) {
     if (inRange) {
       let f = pow(1 - d / 160, 2) * 14;
@@ -72,9 +109,10 @@ class Particle {
     this.y += this.vy;
   }
 
-  // Pull toward cursor + a sideways nudge perpendicular to the pull = orbit.
-  // The 0.6 multiplier on the tangential part took a lot of trial and error —
-  // higher and they escape, lower and they just pile up at the cursor.
+  // Variation 2 — Orbit
+  // Inward pull + perpendicular tangential nudge = swirling orbit.
+  // 0.6 tangential multiplier took a lot of tuning —
+  // higher = particles escape, lower = they pile up at the cursor.
   orbit(dx, dy, d, inRange) {
     if (inRange) {
       let pull = (1 - d / 160) * 3.5;
@@ -91,9 +129,10 @@ class Particle {
     this.y += this.vy;
   }
 
-  // Each particle aligns to a flow angle based on mouse direction + a sine wave.
-  // The index offset (index * 0.04) gives each one a slightly different phase
-  // so they don't all move in sync — makes it look more alive.
+  // Variation 3 — Flock
+  // Particles align to a flow direction from mouse + evolving sine wave.
+  // Per-particle phase offset (index * 0.04) means each one is slightly
+  // out of sync — the group has internal variation and looks alive.
   flock(dx, dy, d, inRange) {
     if (inRange) {
       let t = frameCount * 0.015 + this.index * 0.04;
@@ -125,13 +164,10 @@ class Particle {
   }
 }
 
-function keyPressed() {
-  if (key === "1") { mode = 0; spawnParticles(); }
-  if (key === "2") { mode = 1; spawnParticles(); }
-  if (key === "3") { mode = 2; spawnParticles(); }
-}
-
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   spawnParticles();
+  btn1.position(20, 20);
+  btn2.position(20, 55);
+  btn3.position(20, 90);
 }
