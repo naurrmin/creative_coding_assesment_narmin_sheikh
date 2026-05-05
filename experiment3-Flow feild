@@ -1,0 +1,139 @@
+// Experiment 3 — Flow Field Pattern Generator
+// Inspired by Tyler Hobbs' Fidenza (tylerxhobbs.com/words/flow-fields) — his writing on
+// stepping curves along a noise angle field is what got me started on this.
+// Also referenced Shiffman's Nature of Code Ch.6 for the flow field grid setup.
+// The Box-Muller transform for Gaussian random numbers came from Wikipedia.
+// Everything else — the palettes, the density bias, the turbulence, progressive rendering — I built myself.
+
+let flowField = [];
+let curves = [];
+let palette, scl, cols, rows;
+let progress = 0;
+let done = false;
+let seed;
+
+const PALETTES = [
+  { name: "dusk",  bg: [15, 10, 28],    cols: [[252,163,17],[239,71,111],[6,214,160],[17,138,178]] },
+  { name: "ash",   bg: [22, 22, 26],    cols: [[220,220,215],[180,160,140],[100,90,85],[240,200,170]] },
+  { name: "bloom", bg: [10, 18, 14],    cols: [[255,213,79],[255,111,97],[122,212,144],[86,180,233]] },
+  { name: "void",  bg: [6, 6, 10],      cols: [[138,100,255],[80,200,255],[255,80,180],[255,200,80]] },
+  { name: "linen", bg: [240, 233, 218], cols: [[70,50,40],[140,100,80],[200,160,120],[100,130,100]] }
+];
+
+function setup() {
+  createCanvas(400, 400);
+  noFill();
+  newGeneration();
+}
+
+function newGeneration() {
+  seed = floor(random(99999));
+  randomSeed(seed);
+  noiseSeed(seed);
+
+  palette = random(PALETTES);
+  scl = floor(random(14, 28));
+  cols = floor(width / scl) + 1;
+  rows = floor(height / scl) + 1;
+
+  buildField();
+  planCurves();
+  progress = 0;
+  done = false;
+  background(palette.bg[0], palette.bg[1], palette.bg[2]);
+}
+
+// Two layers of noise stacked on top of each other.
+// The first handles the big sweeping direction, the second adds
+// smaller local curvature. `twist` controls how curly everything gets —
+// low = gentle water flow, high = tight spirals.
+function buildField() {
+  flowField = [];
+  let ns = random(0.002, 0.006);
+  let twist = random(0.5, 2.5);
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let angle = noise(x * ns, y * ns) * TWO_PI * twist;
+      angle += noise(x * ns * 4 + 100, y * ns * 4 + 100) * PI * 0.5;
+      flowField[x + y * cols] = angle;
+    }
+  }
+}
+
+// 60% of curves start near the centre using a Gaussian spread —
+// this gives the composition a natural focal point instead of
+// looking like a repeated wallpaper tile.
+// 15% chance of a thick stroke for some visual weight contrast.
+function planCurves() {
+  curves = [];
+  let n = floor(random(120, 340));
+
+  for (let i = 0; i < n; i++) {
+    let gx = random() < 0.6 ? gauss(width * 0.5, width * 0.22) : random(width * 0.05, width * 0.95);
+    let gy = random() < 0.6 ? gauss(height * 0.5, height * 0.22) : random(height * 0.05, height * 0.95);
+
+    curves.push({
+      x: gx, y: gy,
+      col: random(palette.cols),
+      w: random() < 0.15 ? random(6, 20) : random(1, 6),
+      steps: floor(random(40, 200)),
+      alpha: random(60, 200),
+      pts: []
+    });
+  }
+}
+
+// Box-Muller transform — converts two uniform random numbers into a Gaussian sample
+// Source: en.wikipedia.org/wiki/Box-Muller_transform
+function gauss(mean, sd) {
+  return mean + sqrt(-2 * log(1 - random())) * cos(TWO_PI * random()) * sd;
+}
+
+function draw() {
+  if (done) return;
+
+  // draw 6 curves per frame so you can watch it build up
+  for (let b = 0; b < 6; b++) {
+    if (progress >= curves.length) { done = true; break; }
+    drawCurve(curves[progress]);
+    progress++;
+  }
+}
+
+function drawCurve(c) {
+  for (let s = 0; s < c.steps; s++) {
+    let xi = floor(c.x / scl);
+    let yi = floor(c.y / scl);
+    if (xi < 0 || xi >= cols || yi < 0 || yi >= rows) break;
+
+    c.pts.push({ x: c.x, y: c.y });
+
+    let angle = flowField[xi + yi * cols];
+    c.x += cos(angle) * scl * 0.5;
+    c.y += sin(angle) * scl * 0.5;
+
+    // small random kick occasionally — stops all curves looking identical
+    if (random() < 0.04) {
+      c.x += gauss(0, scl * 0.8);
+      c.y += gauss(0, scl * 0.8);
+    }
+  }
+
+  if (c.pts.length < 2) return;
+
+  stroke(c.col[0], c.col[1], c.col[2], c.alpha);
+  strokeWeight(c.w);
+  beginShape();
+  for (let pt of c.pts) curveVertex(pt.x, pt.y);
+  endShape();
+}
+
+function keyPressed() {
+  if (key === " ") newGeneration();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  newGeneration();
+}
