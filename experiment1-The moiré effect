@@ -1,54 +1,27 @@
 // Experiment 1 — Moiré Interference
 //
-// Starting point: p5.js basic line example from the official p5.js examples page
-// https://p5js.org/examples/form-lines/
-// That example just draws a single line between two points.
-// From there I built the idea of repeating that into a radial system,
-// then layering two systems on top of each other to get the interference.
+// Starting point: "Rotate" example from p5js.org/examples/transformation-rotate/
+// Source: Processing Foundation, licensed CC BY-NC-SA 4.0
+// The basic idea of drawing repeated lines rotating around a centre point
+// came from that example. Everything else — the dual system interference,
+// the three variation types, noise alpha, and mouse interaction — is my own.
 //
 // Also inspired by Nervous System studio (n-e-r-v-o-u-s.com) who use
 // interference patterns in their generative jewellery and fabric work.
 //
-// The dual-system idea, noise alpha, mouse offset, and all three variations
-// are my own development from that starting point.
+// HOW VARIATIONS WORK:
+// Click anywhere on the canvas to cycle through the three variations.
+// Variation 1 — Radial Interference
+// Variation 2 — Linear Wave
+// Variation 3 — Spiral Vortex
 
 let mode = 0;
 let t = 0;
-let btn1, btn2, btn3;
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  createCanvas(400, 400);
   strokeWeight(0.8);
   noFill();
-
-  // create three buttons to switch variations
-  btn1 = createButton('Variation 1 — Radial');
-  btn2 = createButton('Variation 2 — Linear');
-  btn3 = createButton('Variation 3 — Spiral');
-
-  styleBtn(btn1);
-  styleBtn(btn2);
-  styleBtn(btn3);
-
-  // position them top left
-  btn1.position(20, 20);
-  btn2.position(20, 55);
-  btn3.position(20, 90);
-
-  btn1.mousePressed(() => mode = 0);
-  btn2.mousePressed(() => mode = 1);
-  btn3.mousePressed(() => mode = 2);
-}
-
-function styleBtn(btn) {
-  btn.style('background', 'rgba(255,255,255,0.08)');
-  btn.style('color', 'rgba(255,255,255,0.75)');
-  btn.style('border', '1px solid rgba(255,255,255,0.2)');
-  btn.style('padding', '6px 14px');
-  btn.style('font-family', 'monospace');
-  btn.style('font-size', '12px');
-  btn.style('cursor', 'pointer');
-  btn.style('border-radius', '3px');
 }
 
 function draw() {
@@ -63,10 +36,10 @@ function draw() {
   else drawSpiral(mx, my);
 }
 
-// Variation 1 — Radial
-// Two sets of radial lines from drifting centres.
-// Mouse pushes them in opposite directions which
-// stretches or collapses the interference zone.
+// Variation 1 — Radial Interference
+// Two sets of radial lines drift from separate centres.
+// Moving the mouse pushes them in opposite directions which
+// stretches or collapses the interference zone between them.
 function drawRadial(mx, my) {
   let cx1 = width / 2 + mx * 80 + sin(t * 0.7) * 60;
   let cy1 = height / 2 + my * 60 + cos(t * 0.5) * 40;
@@ -77,9 +50,11 @@ function drawRadial(mx, my) {
     let angle = (TWO_PI / 120) * i;
     let len = max(width, height) * 0.8;
 
+    // noise-driven alpha so lines aren't all the same brightness
     stroke(255, 255, 255, map(noise(i * 0.1, t * 0.3), 0, 1, 0.15, 0.9) * 180);
     line(cx1, cy1, cx1 + cos(angle) * len, cy1 + sin(angle) * len);
 
+    // second system rotates slightly differently — this creates the fringe
     let a2 = angle + t * 0.12 + mx * 0.3;
     stroke(200, 220, 255, map(noise(i * 0.1 + 100, t * 0.3 + 10), 0, 1, 0.15, 0.9) * 150);
     line(cx2, cy2, cx2 + cos(a2) * len, cy2 + sin(a2) * len);
@@ -89,6 +64,7 @@ function drawRadial(mx, my) {
 // Variation 2 — Linear Wave
 // Horizontal and vertical sine-wave grids layered together.
 // Different frequencies mean they never line up — creates the shimmer.
+// Mouse warps the wave amplitude in real time.
 function drawLinear(mx, my) {
   let spacing = 14;
 
@@ -114,8 +90,9 @@ function drawLinear(mx, my) {
 }
 
 // Variation 3 — Spiral Vortex
-// Two sets of 5-arm spirals counter-rotating.
-// Mouse squishes the Y axis of the second set, warping the vortex.
+// Two sets of 5-arm spirals counter-rotating against each other.
+// Mouse squishes the Y axis of the second set which warps the vortex.
+// Tried 3 and 7 arms too — 5 felt the most balanced visually.
 function drawSpiral(mx, my) {
   let cx = width / 2 + mx * 50;
   let cy = height / 2 + my * 50;
@@ -144,9 +121,11 @@ function drawSpiral(mx, my) {
   }
 }
 
+// click anywhere to cycle to the next variation
+function mousePressed() {
+  mode = (mode + 1) % 3;
+}
+
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  btn1.position(20, 20);
-  btn2.position(20, 55);
-  btn3.position(20, 90);
 }
